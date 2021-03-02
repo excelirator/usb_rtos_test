@@ -25,7 +25,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "usbh_def.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -43,29 +43,17 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
-/* Definitions for defaultTask */
-osThreadId_t defaultTaskHandle;
-const osThreadAttr_t defaultTask_attributes = {
-  .name = "defaultTask",
-  .priority = (osPriority_t) osPriorityNormal,
-  .stack_size = 128 * 4
-};
-/* Definitions for usbTask */
-osThreadId_t usbTaskHandle;
-const osThreadAttr_t usbTask_attributes = {
-  .name = "usbTask",
-  .priority = (osPriority_t) osPriorityAboveNormal,
-  .stack_size = 128 * 4
-};
+osThreadId defaultTaskHandle;
+osThreadId usbTaskHandle;
 /* USER CODE BEGIN PV */
-
+extern USBH_HandleTypeDef hUsbHostFS;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
-void StartDefaultTask(void *argument);
-void usbOSfunc(void *argument);
+void StartDefaultTask(void const * argument);
+void usbOSfunc(void const * argument);
 
 /* USER CODE BEGIN PFP */
 
@@ -109,9 +97,6 @@ int main(void)
 
   /* USER CODE END 2 */
 
-  /* Init scheduler */
-  osKernelInitialize();
-
   /* USER CODE BEGIN RTOS_MUTEX */
   /* add mutexes, ... */
   /* USER CODE END RTOS_MUTEX */
@@ -129,19 +114,17 @@ int main(void)
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
-  /* creation of defaultTask */
-  defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
+  /* definition and creation of defaultTask */
+  osThreadDef(defaultTask, StartDefaultTask, osPriorityIdle, 0, 128);
+  defaultTaskHandle = osThreadCreate(osThread(defaultTask), NULL);
 
-  /* creation of usbTask */
-  usbTaskHandle = osThreadNew(usbOSfunc, NULL, &usbTask_attributes);
+  /* definition and creation of usbTask */
+  osThreadDef(usbTask, usbOSfunc, osPriorityAboveNormal, 0, 128);
+  usbTaskHandle = osThreadCreate(osThread(usbTask), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
   /* USER CODE END RTOS_THREADS */
-
-  /* USER CODE BEGIN RTOS_EVENTS */
-  /* add events, ... */
-  /* USER CODE END RTOS_EVENTS */
 
   /* Start scheduler */
   osKernelStart();
@@ -257,16 +240,16 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
 
   /* EXTI interrupt init*/
-  HAL_NVIC_SetPriority(EXTI0_IRQn, 0, 0);
+  HAL_NVIC_SetPriority(EXTI0_IRQn, 5, 0);
   HAL_NVIC_EnableIRQ(EXTI0_IRQn);
 
-  HAL_NVIC_SetPriority(EXTI1_IRQn, 0, 0);
+  HAL_NVIC_SetPriority(EXTI1_IRQn, 5, 0);
   HAL_NVIC_EnableIRQ(EXTI1_IRQn);
 
-  HAL_NVIC_SetPriority(EXTI2_IRQn, 0, 0);
+  HAL_NVIC_SetPriority(EXTI2_IRQn, 5, 0);
   HAL_NVIC_EnableIRQ(EXTI2_IRQn);
 
-  HAL_NVIC_SetPriority(EXTI3_IRQn, 0, 0);
+  HAL_NVIC_SetPriority(EXTI3_IRQn, 5, 0);
   HAL_NVIC_EnableIRQ(EXTI3_IRQn);
 
 }
@@ -282,11 +265,13 @@ static void MX_GPIO_Init(void)
   * @retval None
   */
 /* USER CODE END Header_StartDefaultTask */
-void StartDefaultTask(void *argument)
+void StartDefaultTask(void const * argument)
 {
   /* init code for USB_HOST */
   MX_USB_HOST_Init();
   /* USER CODE BEGIN 5 */
+  USBH_OSEventTypeDef startMsg = (uint32_t) USBH_PORT_EVENT;
+  osMessagePut(hUsbHostFS.os_event, startMsg, 0U);
   /* Infinite loop */
   for(;;)
   {
@@ -302,13 +287,19 @@ void StartDefaultTask(void *argument)
 * @retval None
 */
 /* USER CODE END Header_usbOSfunc */
-void usbOSfunc(void *argument)
+void usbOSfunc(void const * argument)
 {
   /* USER CODE BEGIN usbOSfunc */
+	//static offset variable
+	//number of bytes to read
+	osDelay(1000);	//delayed start of file reading
   /* Infinite loop */
   for(;;)
   {
-    osDelay(1);
+	  //read_file
+	  //increment the offset value
+	  //seek file
+	  osDelay(500);
   }
   /* USER CODE END usbOSfunc */
 }
